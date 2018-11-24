@@ -5,7 +5,6 @@
 import os
 import paramiko
 import loadConfig
-import files_delete
 
 
 class MyParamiko(object):
@@ -15,7 +14,6 @@ class MyParamiko(object):
         '''
         config = loadConfig.load_json()
         setting = self.setting = config[config['start']]
-        # print('setting=== ', setting)
 
         self.host = setting['host']
         self.pwd = setting['pwd']
@@ -24,14 +22,10 @@ class MyParamiko(object):
         # self.private_key = paramiko.RSAKey.from_private_key_file(
         # '/Users/panda/.ssh/id_rsa')
 
-        # 下载文件或者文件夹到指定位置
-        self.download_file = setting['download_file']
-        self.storage_path = setting['storage_path']
         # 上传文件或者文件夹到指定位置
-        self.upload_path = setting['upload_path']
-        self.upload_file = setting['upload_file']
-        # 删除文件或者文件夹
-        self.delete_file = setting['delete_file']
+        self.remote_path = setting['remote_path']
+        self.local_path = setting['local_path']
+        # 不需要上传的文件列表
         self.not_upload_list = setting['not_upload_list']
 
         self._connect_remote_server()
@@ -98,18 +92,6 @@ class MyParamiko(object):
         if result_err is None:
             print(str(result_err, encoding='utf-8'))
 
-    def get(self, sftp, remote_file, local_file):
-        '''
-        下载单个文件
-        :param sftp:
-        :param remote_file:
-        :param local_file:
-        :return:
-        '''
-        print('开始下载文件=== ', remote_file)
-        sftp.get(remote_file, local_file)
-        print('下载完成,保存在=== ', local_file)
-
     def put(self, sftp, local_file, remote_file):
         '''
         上传单个文件
@@ -124,18 +106,14 @@ class MyParamiko(object):
             print('该文件不上传=== ', base_name)
             return
 
-        print('开始上传文件=== ', local_file)
+        print('上传文件=== ', base_name)
         sftp.put(local_file, remote_file)
-        print('上传完成,保存在=== ', remote_file)
+        print('上传完成,储存位置=== ', os.path.dirname(remote_file))
 
-    def get_dir(self,sftp,remote_dir,local_dir):
-        # all_files = self.__get_all_files_in_remote_dir(sftp,remote_dir)
-        # print(all_files)
-        # for x in all_files:
-        #     file_path =
-        pass
-
-    def put_dir(self,sftp,local_dir, remote_dir):
+    def put_dir(self, sftp, local_dir, remote_dir):
+        '''
+        上传目录
+        '''
         try:
             sftp.mkdir(remote_dir)
         except Exception as e:
@@ -145,21 +123,20 @@ class MyParamiko(object):
         if local_dir[-1] == '/':
             local_dir = local_dir[0:-1]
 
-        for root,dirs,files in os.walk(local_dir):
+        for root, dirs, files in os.walk(local_dir):
             for filespath in files:
-                local_file = os.path.join(root,filespath)
-                a = local_file.replace(local_dir + '/','')
-                remote_file = os.path.join(remote_dir,a)
+                local_file = os.path.join(root, filespath)
+                a = local_file.replace(local_dir + '/', '')
+                remote_file = os.path.join(remote_dir, a)
                 try:
-                    self.put(sftp,local_file,remote_file)
+                    self.put(sftp, local_file, remote_file)
                 except Exception as e:
-                    sftp.mkdir(os.path.split(remote_file)[0])
-                    print('创建目录=== ', os.path.split(remote_file)[0])
-                    self.put(sftp,local_file,remote_file)
+                    print(e)
+
             for name in dirs:
                 local_path = os.path.join(root, name)
-                a = local_path.replace(local_dir + '/','')
-                remote_path = os.path.join(remote_dir,a)
+                a = local_path.replace(local_dir + '/', '')
+                remote_path = os.path.join(remote_dir, a)
                 try:
                     sftp.mkdir(remote_path)
                     print('创建目录=== ', remote_path)
@@ -167,48 +144,58 @@ class MyParamiko(object):
                     print(e)
         print('上传完成！')
 
-    def upload_py_server(self,sftp,callback=None):
+    def delete_sftp_files(self, sftp, path):
         '''
-        上传删除服务端文件的py文件
+        删除远程服务器文件
         '''
-        file_delete_name = 'files_delete.py'
-        parent_dir = os.path.dirname(self.upload_path)
-        print('上传=== ', parent_dir)
-        sftp.put(file_delete_name, os.path.join(
-            parent_dir, file_delete_name))
-        print('上传py文件完成！')
+        print('开始删除该处文件==== ', path)
+
+        def delete(p):
+            try:
+                files = sftp.listdir(p)
+                if files is None or len(files) == 0:
+                    try:
+                        sftp.rmdir(p)
+                        print('删除目录=== ', p)
+                    except Exception as e:
+                        print('不存在该目录=== ', e)
+                        pass
+                else:
+                    for file in files:
+                        try:
+                            # 尝试删除文件
+                            sftp.remove(os.path.join(p, file))
+                            print('删除文件=== ', file)
+                        except Exception as e:
+                            try:
+                                # 尝试删除目录
+                                sftp.rmdir(os.path.join(p, file))
+                                print('删除目录=== ', os.path.join(p, file))
+                            except Exception as e:
+                                # 目录不为空时，递归删除子目录
+                                delete(os.path.join(p, file))
+                    # 尝试删除该目录所在的目录
+                    delete(p)
+            except Exception as e:
+                print('不存在该目录=== ', e)
+                pass
+        delete(path)
 
 
 if __name__ == "__main__":
-    # 删除本地目录
-    config = loadConfig.load_json()
-    setting = config[config['start']]
-    # files_delete.delete(setting['storage_path'])
-
     # 链接远程服务器
     my_connect = MyParamiko()
     # 链接ssh
-    ssh = my_connect.connect_ssh()
+    # ssh = my_connect.connect_ssh()
     # 执行指令
     # my_connect.cmd(ssh, 'cd /var/www/pb_me \n ls \n python files_delete.py')
 
     # 链接sftp
     sftp = my_connect.connect_sftp()
 
-    # 下载文件
-    # 服务器文件属性
-    # base_name = os.path.basename(my_connect.download_file)
-    # my_connect.get(sftp, my_connect.download_file,
-    #                os.path.join(my_connect.storage_path, base_name))
-
-    # 上传删除服务端文件的py文件,配置为true时，上传，否则不上传
-    if config['is_need_upload_py']:
-        my_connect.upload_py_server(sftp)
-
-    # 执行删除指令
-    my_connect.cmd(ssh, 'cd %s \n python files_delete.py' % (os.path.split(my_connect.upload_path)[0]))
-    # my_connect.cmd(ssh, 'cd ' + os.path.split(my_connect.upload_path)[0] + '\npython files_delete.py')
+    # 删除远程服务器上的目录
+    my_connect.delete_sftp_files(sftp, my_connect.remote_path)
     # 上传目录
-    my_connect.put_dir(sftp, my_connect.upload_file, my_connect.upload_path)
+    my_connect.put_dir(sftp, my_connect.local_path, my_connect.remote_path)
     # 关闭远程服务器链接
     my_connect.close()

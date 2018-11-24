@@ -1,16 +1,12 @@
 {
     "start": "me",
-    "is_need_upload_py":true,
-    "me":{
-        "host": "xxxx",
-        "user": "xxxx",
-        "port": 22,
-        "pwd": "xxxx",
-        "download_file": "/var/www/pb_me/index.html",
-        "storage_path":"./src",
-        "upload_path": "/var/www/pb_me/res",
-        "upload_file": "/Users/panda/Downloads/res",
-        "delete_file": "/var/www/pb_me/res",
-        "not_upload_list":[".DS_Store"]
+    "me": {
+        "host": "xxx",
+        "user": "xxx",
+        "port": 52136,
+        "pwd": "xxx",
+        "remote_path": "/var/www/pb_me/res",
+        "local_path": "/Users/panda/Downloads/res",
+        "not_upload_list": [".DS_Store"]
     }
 }
