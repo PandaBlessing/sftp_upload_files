@@ -119,14 +119,15 @@ class MyParamiko(object):
         except Exception as e:
             print(e)
 
-        # 去掉路径字符串最后的字符'/'，如果有的话
-        if local_dir[-1] == '/':
+        # 去掉路径字符串最后的分隔符'/'，如果有的话
+        str_sep = os.sep
+        if local_dir[-1] == str_sep:
             local_dir = local_dir[0:-1]
 
         for root, dirs, files in os.walk(local_dir):
             for filespath in files:
                 local_file = os.path.join(root, filespath)
-                a = local_file.replace(local_dir + '/', '')
+                a = local_file.replace(local_dir + str_sep, '')
                 remote_file = os.path.join(remote_dir, a)
                 try:
                     self.put(sftp, local_file, remote_file)
@@ -135,7 +136,7 @@ class MyParamiko(object):
 
             for name in dirs:
                 local_path = os.path.join(root, name)
-                a = local_path.replace(local_dir + '/', '')
+                a = local_path.replace(local_dir + str_sep, '')
                 remote_path = os.path.join(remote_dir, a)
                 try:
                     sftp.mkdir(remote_path)
