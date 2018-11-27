@@ -129,6 +129,8 @@ class MyParamiko(object):
                 local_file = os.path.join(root, filespath)
                 a = local_file.replace(local_dir + str_sep, '')
                 remote_file = os.path.join(remote_dir, a)
+                if os.path.sep == '\\':
+                    remote_file = remote_file.replace('\\', '/')
                 try:
                     self.put(sftp, local_file, remote_file)
                 except Exception as e:
@@ -138,6 +140,8 @@ class MyParamiko(object):
                 local_path = os.path.join(root, name)
                 a = local_path.replace(local_dir + str_sep, '')
                 remote_path = os.path.join(remote_dir, a)
+                if os.path.sep == '\\':
+                    remote_path = remote_path.replace('\\', '/')
                 try:
                     sftp.mkdir(remote_path)
                     print('创建目录=== ', remote_path)
